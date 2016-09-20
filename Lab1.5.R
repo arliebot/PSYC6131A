@@ -200,6 +200,7 @@ cars
 
 # 1) Save data as .csv in Excel
 # 2) Put the data in the same folder you saved your RScript
+#    - https://arliebot.github.io/PSYC6131A/
 #    - download the class file data.csv
 #    - save it to desired folder
 # 3) Set that folder as your working directory
