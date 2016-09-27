@@ -18,7 +18,6 @@
 # - Barplot (including stacked)
 # - Boxplot(s)
 # - Scatterplot (with a linear trend, and with a lowess trend)
-# - Line graphs
 
 
 
