@@ -32,6 +32,12 @@
 
 # Create variable x as sequence of values
 # ranging from 0 to 20 with intervals of 1
+# Imagine you are replicating a pass/fail experiment 20 times
+# the x axis is the number of successes we expect
+# the y axis is the probability of seeing that number of successes
+# the mean = np so mean = 20 * 0.5 = 10
+# when we change p to 0.75, we are moving the mean to increase the 
+# probability of successes. So mean = 20 * 0.75 = 15
 
 x <- seq(0, 20, 1) 
 x 
@@ -39,7 +45,7 @@ x
 # plot(x,y) where y is a density binomial
 # dbinom(x, size, prob, log = FALSE)
 
-plot(x = x, y = dbinom(x, 20, 0.5)) # Density
+plot(x = x, y = dbinom(x, 20, 0.75)) # Density
 plot(x = x, y = pbinom(x, 20, 0.5)) # Cumulative probability
 plot(x = x, y = rbinom(x, 20, 0.5)) # Random
 
@@ -111,7 +117,7 @@ describe(dat$height)
 X = 180
 Mu = 173.86
 Stdev = 12.59
-N = 100
+N = 1
 SqrtN = sqrt(N)
 
 z <- (X - Mu) / (Stdev / SqrtN) 
@@ -121,7 +127,7 @@ z
 
 Mu <- 173.86
 Stdev <- 12.59
-N <- 100
+N <- 1
 error <- qnorm(0.975) * Stdev / sqrt(N)
 error
 left <- Mu - error
@@ -146,6 +152,7 @@ pvalue2sided
 pvalue1sided <- pnorm(-abs (z)) # 1-tailed
 pvalue1sided
 
+# Check: http://www.socscistatistics.com/pvalues/normaldistribution.aspx
 
 # Effect Size for Z using Cohen's d
 
