@@ -1,0 +1,320 @@
+##Lab5 Bivariate Correlation and Regression
+
+## Data:
+setwd("~/Desktop/TA/2016:2017/Green/Labs/Lab5")
+dat <- read.csv("data.csv")
+
+## Packages:
+install.packages("Hmisc")
+library(Hmisc)
+
+install.packages("car")
+library(car)
+
+install.packages("pwr")
+library(pwr)
+
+install.packages("DescTools")
+library(DescTools)
+
+library(psych)
+
+install.packages("fmsb")
+library(fmsb)
+
+# This Week's Plan Howell Chapters 9-10 
+
+# - Scatterplot 
+# - Covariance  
+# - Pearson Correlation `r`  
+# - Regression Line  
+# - Alternative Line Fitting 
+# - Regression
+# - Prediction Accuracy
+# - Confidence Limits  
+# - Hypothesis Testing  
+# - Power for Pearson's `r`
+# - Cramer's V and Phi  
+# - Biserial and Tetrachoric Correlation  
+# - Point-Biserial Correlation  
+# - Ranked Correlation  
+# - Kendall's Coefficient of Concordance `W`  
+# - Odds Ratio  
+# - Contingency tables with Ordered Data  
+
+
+## Look at the data
+head(dat)
+
+# Create a second dichotomous variable
+str(dat)
+neur_d <- factor(ifelse(dat$neur > 50, 1, 0), labels = c("Low", "High"))
+
+# Add it to the dataframe
+dat <- cbind(neur_d, dat)
+head(dat)
+str(dat)
+
+## Scatterplot
+# Always look at your data first
+
+plot(dat$iq1, dat$iq2, main = "IQCorrelation")
+abline(lm(dat$iq2~dat$iq1))
+
+
+## Covariance  
+# The degree to which two variables vary together
+
+# Simple Covariance
+# Sum of x minus xbar times y minus y bar
+cov(dat$iq1, dat$iq2) 
+# We see a positive linear relationship
+
+# The cov function default uses Pearson
+# but you can also specify Spearman or Kendall
+cov(dat$iq1, dat$iq2, method = "pearson")
+cov(dat$iq1, dat$iq2, method = "spearman") # Ranked data
+cov(dat$iq1, dat$iq2, method = "kendall") # Inversions of 2 rankings
+
+
+## Pearson Correlation `r`  
+# Degree of relationship between two continuous variables
+# Simple correlation in base R
+cor(dat$iq1, dat$iq2)
+cor(dat$iq1, dat$iq2, method = "pearson") 
+# Pearson is the `cor` default, but no `p` values
+
+# Alternative correlations with same code
+cor(dat$iq1, dat$iq2, method = "spearman")
+cor(dat$iq1, dat$iq2, method = "kendall")
+
+## Correlation with significance levels
+# install.packages("Hmisc")
+# library(Hmisc)
+rcorr(dat$neur, dat$extr) # `r` = 0.01, `p` = 0.9322
+plot(dat$neur, dat$extr) # does it look right? 
+abline(lm(dat$extr~dat$neur))
+
+
+## R Squared Adjusted
+model <- lm(extr~neur, data = dat)
+summary(model)$adj.r.squared 
+
+
+## Regression 
+# Using relationship strength + direction for prediction
+iq.lm <- lm(iq2 ~ iq1, data = dat) # lm is linear model
+#  Extract model coefficients from lm
+coeffs <- coefficients(iq.lm)
+coeffs
+
+# `b` is dist `a` is intercept
+# y = bx + a 
+# y = 0.9320939(x) + 7.8374554
+
+y <- 0.9320939 * 100 + 7.8374554 # Solve for y if x = 100
+y # y = 101.0468
+
+# Can also get info from `summary`
+summary(iq.lm)
+
+
+## Alternative Line Fitting  
+# Scatterplot Smoothers
+# Symmetric
+scatter.smooth(dat$iq1, dat$iq2, span = 2/3, degree = 1,
+               family = "symmetric")
+# Symmetric means same number above and below line
+# Span is smoothness parameter for loess
+# Don't make `degree` more than the total # of variables
+               
+# Gaussian
+scatter.smooth(dat$iq1, dat$iq2, span = 2/3, degree = 1,
+               family = "gaussian")
+# Fit using least-squares
+# Minimizes the sum of the squares of the differences
+# between the observed values and the estimated values
+
+
+# Splines
+plot(dat$iq1, dat$iq2)
+dat.spline <- smooth.spline(dat$iq1, dat$iq2)
+lines(dat.spline, col="blue")
+
+# can change the degrees of freedom to add more knots
+# lty means line type
+lines(smooth.spline(dat$iq1, dat$iq2, df = 10), lty = 2, col = "red")
+
+
+# Loess
+plot(dat$iq1, dat$iq2)
+lines(lowess(dat$iq1,dat$iq2), col="red") 
+
+
+## Regression
+# Remember Linear Regression
+fit <- lm(iq1 ~ iq2, data = dat)
+summary(fit) # show results
+# We look at the intercept and slope, and the t and p vaules
+
+# Multiple Regression
+fit2 <- lm(iq1 ~ iq2 + height, data = dat)
+summary(fit2)
+
+# Compare Nested Models
+fit1 <- lm(iq1 ~ iq2 + height + neur, data = dat)
+fit2 <- lm(iq1 ~ iq2 + height, data = dat)
+anova(fit1, fit2)
+
+# `F` = 0.0967, `p` = 0.7565
+
+# Models MUST be NESTED to use ANOVA
+# Cannot compare fit3 and fit1
+# Because `neur` is not nested in `extr`
+
+fit3 <- lm(iq1 ~ iq2 + height + extr, data=dat)
+fit1 <- lm(iq1 ~ iq2 + height + neur, data=dat)
+anova(fit3, fit1) # bad bad bad!!! They aren't nested!!!
+
+
+## Prediction Accuracy  
+# Standard Error of Estimate
+fit2 <- lm(iq1 ~ iq2 + height, data = dat)
+summary(fit2)
+
+
+# Residuals
+# Get residuals for each person
+resfit2 <- residuals(fit2) 
+resfit2
+
+# Residual Plot
+barplot(resfit2)
+
+# Advanced Method To See Plots of Residuals
+# library(car)
+plot(fit2) 
+# Press `Enter` in console to scroll through plots
+
+
+## Confidence Limits  
+# Confidence Limits for Linear Model Regression
+dat.lm1 <- lm(iq2 ~ iq1, data = dat)
+newdata <- data.frame(iq1 = 80)
+predict(dat.lm1, newdata, interval = "confidence")
+# Predicting iq2 from iq1. If iq1=80, it yields a predicted
+# value for iq2 of 82.4 with a lower bound of 79.66 
+# and upper bound of 85.1
+
+# Confidence Limits with More Predictors
+dat.lm2 <- lm(iq2 ~ iq1 + neur + extr, data = dat)
+newdata2 <- data.frame(iq1=80, neur=70, extr=100)
+predict(dat.lm2, newdata2, interval="confidence")
+# Predicting iq2 from iq1, neur, and extr. It yields a 
+# predicted value for iq2 of 82.7 with a lower bound of 78.88 and upper bound of 86.53
+
+# Note: because these are bad predictors, the confidence band became wider
+
+
+## Hypothesis testing  
+# Hypothesis Testing for Regression
+# Are the predictors significant?
+# Create a model fit table
+anova(fit2) # predicting iq1 from iq2 and height
+# Shows F and p for iq2 and height predictors
+summary(fit2)
+
+# For catgorical varaible first show overall effect
+fit5 <- lm(iq2 ~ iq1 + as.factor(sports), data = dat)
+anova(fit5)
+# Then use summary() to show particular contrasts
+summary(fit5)
+
+
+## Power for Pearson's `r`
+# install.packages("pwr")
+# library(pwr)
+# Power for Correlation
+cor(dat$iq2, dat$iq1) # To get the data for below
+pwr.r.test(n = 100 , r = 0.859, sig.level = 0.05, power = )
+# Power for this test was 1
+
+pwr.r.test(n =  , r = 0.859, sig.level = 0.05, power = 0.8)
+# We only needed 7.3 people to get 0.8 power given the correlation
+
+
+
+## Correlation for Dichotomous Variables
+# Make some dichotomous data
+x <- c(1,0,1,0,0,0,1,1,0,1)
+y <- c(1,1,1,1,1,0,0,1,0,1)
+
+# install.packages("DescTools")
+# library("DescTools")
+
+## Phi
+# Correlation coefficient for 2 dichotomous variables
+Phi(x,y) 
+Phi(dat$sex, dat$neur_d)
+
+## Cramer's V
+# Correlation for categorical variables more than 2x2
+CramerV(x,y) # Phi and V are equal when 2x2
+
+# Add 3 levels so 2x3
+z <- c(1,0,2,1,2,1,0,0,1,2) 
+CramerV(x,z)
+
+
+## Biserial Correlation
+# One dichotomous, one continuous variable
+library("psych")
+w <- c(1,2,3,4,5,6,7,8,9,10)
+biserial(w,x) 
+
+
+## Teterachoric Correlation
+# Two dichotomous variables in a 2x2 table
+xycount <- table(x,y) 
+# 2x2 cell frequencies 
+tetrachoric(xycount)
+
+
+## Point-Biserial Correlation  
+# Just run cor() on dichotomous data
+cor(x,y)
+
+
+## Odds Ratio
+# Effect size for categorical data
+
+# Look at Data Counts
+xycount <- table(x,y) # 2x2 cell frequencies 
+xycount
+
+# Odds Ratio
+# install.packages("fmsb")
+# library("fmsb")
+res <- oddsratio(2,1,3,4, conf.level = 0.95)
+# Odds ratio = the odds of having disease vs not having
+# the disease given exposure, divided by the odds of having
+# the disease vs not having disease given non-exposure.
+
+print(res)
+# So, the odds of having the disease with exposure is
+# 2.667 times higher than the odds of having the disease
+# without exposure.
+
+# Homework!
+
+# 1) Find the covariance of iq1 and neur
+# 2) Find the correlation of neur and height
+# 3) Predict iq2 if height = 170
+# 4) Find the odds ratio for sex and neur_d
+
+# Further Reading: http://www.personality-project.org/r/html/tetrachor.html
+
+# Further Reading: https://cran.r-project.org/web/packages/vcdExtra/vignettes/vcd-tutorial.pdf
+
+# Further Reading: "That's Smooth R-Bloggers"
+# http://www.r-bloggers.com/thats-smooth/
