@@ -1,0 +1,215 @@
+# Lab 6: ANOVA
+
+# Install Packages
+install.packages("devtools")
+library(devtools) # Need this to install from github
+
+install_github("trinker/wakefield")
+library(wakefield)
+
+install.packages("pwr")
+library(pwr)
+
+install.packages("lsr")
+library(lsr)
+
+install.packages("car")
+library(car)
+
+install.packages("psych")
+library(psych)
+
+install.packages("WRS2")
+library("WRS2")
+
+# This week's plan  
+
+# - Making datasets and dataframes
+# - One way ANOVA  
+# - Effect size  
+# - Power  
+# - Assumptions
+# - - Homogeneity of variance
+# - - - Welch
+# - - Normality
+# - - - Transformations
+# - - Independance
+
+
+## Making Datasets and Dataframes!
+# Wakefield is a great package for creating random datasets with given parameters 
+# install.packages("devtools")
+# library(devtools) # Need this to install from github
+# install_github("trinker/wakefield")
+# library(wakefield)
+
+# To look at the kinds of variables available
+variables()
+
+# Here are some of the other variables
+?likert_7
+?name
+?race
+?eye
+?pet
+?marital
+?group
+?gender_inclusive
+?sex_inclusive
+
+# Make the dataframe
+dat <- r_data_frame(n = 500, id, race, age, sex_inclusive, iq, height, died)
+head(dat)
+
+# Add a factor I want with 500 observations ranging from 1 to 5, distributed normal-ish
+coffee <- factor(r_sample_integer(n= 500, x = 1:5, 
+          prob = c(.1, .2, .4, .2, .1)))
+
+# Add another one with 3 levels (for Fisher's LSD next week)
+tea <- factor(r_sample_integer(n=500, x = 1:3, 
+       prob = c(.3, .4, .3)))
+
+# Bind new variables to dataframe
+dat.c <- cbind(dat,coffee, tea)
+head(dat.c)
+str(dat.c)
+
+
+## One way ANOVA  
+# Define the model for analysis of variance
+fit <- aov(IQ ~ coffee, data = dat.c)
+summary(fit) # This gives F table
+
+# Plot the fit to see what it looks like
+boxplot(IQ~coffee, data = dat.c, main = "IQ by Coffee", 
+        xlab = "Coffee", ylab = "IQ")
+
+
+## Effect size  
+# Rsquared <- ssb/ssw+ssb
+# ssb = ss coffee
+# ssw = ss residual
+
+# ssb <- # find ssb = ss coffee in aov or summary(fit)
+# ssw <- # find ssw = ss residual in aov or summary(fit)
+# R_Squared <- ssb/(ssw+ssb)
+
+R_Squared <- 371 / (49056 + 371) # Input new values because new data
+R_Squared # 0.007
+
+# R squared is 0.007 because coffee accounts for very little variability in IQ in this example
+
+
+## Magnitude of effect eta squared and omega squared
+# Eta Squared
+# install.packages("lsr")
+# library(lsr)
+etaSquared(fit, type = 2, anova = FALSE) 
+# type is for SS, 2 is default
+
+
+# Omega Squared
+# w2 =(SSeffect-(dfeffect)(MSerror))/MSerror+SStotal
+# find these values from the aov fit
+
+w2 <- (371 - (4)*(99.10)) / (99.10 + (49056+371)) # Find new values
+w2
+
+# Or, someone wrote a function
+omega_sq <- function(aovm){
+    sum_stats <- summary(aovm)[[1]]
+    SSm <- sum_stats[["Sum Sq"]][1]
+    SSr <- sum_stats[["Sum Sq"]][2]
+    DFm <- sum_stats[["Df"]][1]
+    MSr <- sum_stats[["Mean Sq"]][2]
+    W2 <- (SSm-DFm*MSr)/(SSm+SSr+MSr)
+    return(W2)
+}
+
+omega_sq(fit)
+
+
+## Power
+
+# install.packages("pwr")
+# library(pwr)
+
+# Fill in the blanks from your data
+pwr.anova.test(k = 5, n = 500, f = 1.352, sig.level = 0.05, power = )
+
+
+
+## Assumptions
+# Unequal sample sizes  
+
+# Trick question! R does the calculation for unequal sample sizes by default.
+
+
+# Homogeneity of variance
+# Levene's test
+# install.packages("car")
+# library(car)
+leveneTest(fit)
+
+# If Levene's test is significant, you should use the Welch correction
+oneway.test(IQ~coffee, data = dat.c, var.equal=FALSE)
+
+
+# Normality
+plot(fit) # Look at the qq plot
+hist(dat.c$IQ)
+
+# Winsorized scores
+# library(psych)
+wIQ <- winsor(dat.c$IQ, trim = 0.1)
+wdat <- cbind(dat.c, wIQ)
+fit1 <- aov(wIQ ~ coffee, data = wdat)
+summary(fit1)
+hist(wIQ)
+
+# Log of scores
+log_IQ <- log(dat.c$IQ)
+fit2 <- aov(log_IQ ~ coffee)
+summary(fit2)
+hist(log_IQ)
+
+# Exponent of scores
+IQ_Squared <- dat.c$IQ^2
+fit3 <- aov(IQ_Squared ~ coffee)
+summary(fit3)
+hist(IQ_Squared)
+
+# Arcsine Transformation
+# Used on percentages, e.g.:
+hist(dat$Height)
+aHeight <- asin(dat$Height/100)
+hist(aHeight)
+
+# Reciprocal
+# Very extreme:
+rIQ <- 1/dat.c$IQ
+hist(dat$IQ)
+hist(rIQ)
+
+# Robust ANOVA to trim the tails
+# install.packages("WRS2")
+# library("WRS2")
+t1way(IQ ~ coffee, data = dat.c) # default trim is .20
+t1way(IQ ~ coffee, data = dat.c, tr = .05) # 5% trim
+
+# Can also test for median differences:
+med1way(IQ ~ coffee, data = dat.c)
+
+
+## Homework
+
+# 1) Create a dataset with the factor "gender_inclusive" and the 
+# continuous variable "year" with N = 100
+# 2) Test for homogeneity of variance
+# 3) Test for normality
+# 4) Run a one-way ANOVA
+# 5) Create a positively skewed factor with 4 levels and add it to the data.frame
+# 6) Look at the histogram and decide on the appropriate transformation
+# 7) Look at the histogram for the transformed data
+# 8) Compare the F values for the raw and transformed data
+# 9) Rest and eat something. Take care of yourselves and each other.
